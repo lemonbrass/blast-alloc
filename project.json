@@ -1,5 +1,5 @@
 {
-  "langrev": "1",
+  "langrev": "0.6.2",
   "warnings": [ "no-unused" ],
   "dependency-search-paths": [ "lib" ],
   "dependencies": [ ],
