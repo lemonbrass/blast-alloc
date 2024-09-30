@@ -22,11 +22,3 @@ extern fn CInt move(CInt, CInt);
 extern fn CInt curs_set(CInt);
 extern fn CInt noecho();
 
-
-fn void wait_enter(){
-  char ch = (char)getch();
-  while (ch != '\n'){
-    thread::sleep_ms(10);
-  }
-}
-

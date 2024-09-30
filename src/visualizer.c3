@@ -27,7 +27,9 @@ def Components = List(<Component>);
 
 struct Framializer {
   Frames frames;
+  // TODO: Race conditions may occur, add a mutex for pause and quit
   bool pause;
+  bool quit;
 }
 
 struct Visualizer {
@@ -66,6 +68,11 @@ fn void on_pause(void* framializer){
   framie.pause = !framie.pause;
 }
 
+fn void on_quit(void* framializer){
+  Framializer* framie = (Framializer*) framializer;
+  framie.quit = !framie.quit;
+}
+
 fn void Framializer.play(&self){
   Window win = ncurses::initscr();
   ncurses::noecho();
@@ -73,14 +80,18 @@ fn void Framializer.play(&self){
   ncurses::keypad(win, true);
   threads::run_iothread();
   threads::iothread_add_callback(' ', &on_pause, self);
+  threads::iothread_add_callback('q', &on_quit, self);
   ncurses::curs_set(0);
   while (self.frames.len() != 0){
+    if (self.quit) break;
     self.update();
     thread::sleep_ms(FRAMETIME);
   }
-  ncurses::printw("End...");
+  ncurses::printw("Finished visualizing, press q.....");
   ncurses::nodelay(win, false);
-  ncurses::wait_enter(); // wait till user presses Enter
+  while (!self.quit){ 
+    thread::sleep_ms(FRAMETIME);
+  }
   threads::stop_iothread();
   ncurses::endwin();
 }
