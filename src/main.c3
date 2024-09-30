@@ -16,7 +16,7 @@ fn int main(String[] args)
       str[j] = (char)ran_d;
     }
   }
-  alloc.viz.play(); // play the recorded biography of my dear chunk alloc
   alloc.destroy();
+  alloc.viz.play(); // play the recorded biography of my dear chunk alloc
 	return 0;
 }

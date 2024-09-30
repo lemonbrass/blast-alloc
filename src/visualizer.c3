@@ -1,6 +1,7 @@
 module blast_alloc::visualizer;
 
 import blast_alloc::chunk;
+import blast_alloc::threads; 
 import ncurses;
 import std::collections::list;
 import std::collections::tuple;
@@ -10,7 +11,7 @@ import libc;
 import std::io;
 
 
-const ulong FRAMETIME = 1000/20;
+const ulong FRAMETIME = 1000/10;
 
 enum  CompType {
   CHUNK_ALLOC
@@ -26,6 +27,7 @@ def Components = List(<Component>);
 
 struct Framializer {
   Frames frames;
+  bool pause;
 }
 
 struct Visualizer {
@@ -39,32 +41,47 @@ fn Framializer Framializer.create(&self, Frames frames){
 }
 
 fn void Framializer.update(&self){
+  if (self.pause){
+    return;
+  }
   String! frame = self.frames.pop_first();
   if (catch excuse = frame){
     return; // no frame to play
   }
-  ncurses::move(0,0);
+  while (threads::iothread.mut.try_lock() == false){
+    thread::sleep_ms(threads::POLL_TIME);
+  }
+  ncurses::move(0, 0);
   ncurses::printw(frame.zstr_copy());
   ncurses::refresh();
+  threads::iothread.mut.unlock()!!;
 }
 
 fn void Framializer.add_frame(&self, String frame){
   self.frames.push(frame);
 }
 
+fn void on_pause(void* framializer){
+  Framializer* framie = (Framializer*) framializer;
+  framie.pause = !framie.pause;
+}
+
 fn void Framializer.play(&self){
-  ncurses::initscr();
+  Window win = ncurses::initscr();
   ncurses::noecho();
+  ncurses::nodelay(win, true);
+  ncurses::keypad(win, true);
+  threads::run_iothread();
+  threads::iothread_add_callback(' ', &on_pause, self);
   ncurses::curs_set(0);
   while (self.frames.len() != 0){
     self.update();
     thread::sleep_ms(FRAMETIME);
-    //ncurses::getch();
   }
   ncurses::printw("End...");
-  ncurses::getch();
-  ncurses::getch();
-  ncurses::getch();
+  ncurses::nodelay(win, false);
+  ncurses::wait_enter(); // wait till user presses Enter
+  threads::stop_iothread();
   ncurses::endwin();
 }
 

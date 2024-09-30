@@ -10,9 +10,13 @@
   "targets": {
     "blast_alloc": {
       "type": "executable",
+      "opt": "O0",
     },
+    "blast_release": {
+      "type": "executable",
+      "opt": "O5",
+    }
   },
   "cpu": "generic",
-  "opt": "O0",
   "linked-libraries": ["ncurses"],
 }
