@@ -29,11 +29,43 @@ fn void lock_mutex(Mutex* mut){
   }
 }
 
+
+fn void unlock_mutex(Mutex* mut){
+  if (catch err = mut.unlock()) {
+    io::printfn("Error: %s", err);
+    thread::sleep_ms(POLL_TIME);
+    unlock_mutex(mut);
+  }
+}
+
+macro @ncurses_run(;@body()) @builtin {
+  lock_mutex(&iothread.mut);
+  @body();
+  unlock_mutex(&iothread.mut);
+}
+
+
+macro @expect(#errtype) @builtin {
+  $if $typeof(#errtype).typeid == void!.typeid:
+    if (catch err = #errtype){
+      io::printfn("Exception (void!) : %s", err);
+    }
+    return null;
+  $else
+    any! errt = #errtype;
+    if (catch err = errt){
+      io::printfn("Exception: %s", err);
+    }
+    return errt;
+  $endif
+}
+
+
 fn int io_thread_func(void* data){
   while (true){
-    lock_mutex(&iothread.mut);
-    if (iothread.running == false) break;
-    iothread.mut.unlock()!!; // TODO 1: Exception handling
+    @ncurses_run(){
+      if (iothread.running == false) break;
+    };
     char ch = (char)ncurses::getch();
     CallbackList! callbacks = iothread.callbacks[ch];
     if (catch err = callbacks) continue;
@@ -52,9 +84,10 @@ fn void run_iothread(){
   }
   iothread.callbacks.new_init();
   iothread.running = true;
-  iothread.mut.init()!!;
-  iothread.th.create(&io_thread_func, null)!!;
-  iothread.th.detach()!!;
+  @expect(iothread.mut.init());
+  unlock_mutex(&iothread.mut);
+  @expect(iothread.th.create(&io_thread_func, null));
+  @expect(iothread.th.detach());
 }
 
 fn void iothread_add_callback(char event, Callback cback, void* arg){
@@ -77,7 +110,7 @@ fn void iothread_add_callback(char event, Callback cback, void* arg){
 }
 
 fn void stop_iothread(){
-  lock_mutex(&iothread.mut);
-  iothread.running = false;
-  iothread.mut.unlock()!!; // TODO 1
+  @ncurses_run(){
+    iothread.running = false;
+  };
 }

@@ -11,8 +11,6 @@ import libc;
 import std::io;
 
 
-const ulong FRAMETIME = 1000/10;
-
 enum  CompType {
   CHUNK_ALLOC
 }
@@ -29,6 +27,8 @@ struct Framializer {
   Frames frames;
   // TODO: Race conditions may occur, add a mutex for pause and quit
   bool pause;
+  int fps;
+  ulong frametime;
   bool quit;
 }
 
@@ -37,8 +37,23 @@ struct Visualizer {
   Framializer framie;
 }
 
+fn void inc_fps(void* framieraw){
+  Framializer* framie = (Framializer*)framieraw;
+  framie.fps += 5;
+  framie.frametime = 1000/framie.fps;
+}
+
+
+fn void dec_fps(void* framieraw){
+  Framializer* framie = (Framializer*)framieraw;
+  framie.fps -= 5;
+  framie.frametime = 1000/framie.fps;
+}
+
 fn Framializer Framializer.create(&self, Frames frames){
   self.frames = frames;
+  self.fps = 10;
+  self.frametime = 1000/self.fps;
   return *self;
 }
 
@@ -54,7 +69,7 @@ fn void Framializer.update(&self){
   ncurses::move(0, 0);
   ncurses::printw(frame.zstr_copy());
   ncurses::refresh();
-  threads::iothread.mut.unlock()!!;
+  threads::unlock_mutex(&threads::iothread.mut);
 }
 
 fn void Framializer.add_frame(&self, String frame){
@@ -76,7 +91,10 @@ fn void rerender(void* framializer){
   threads::lock_mutex(&threads::iothread.mut);
   ncurses::clear();
   ncurses::refresh();
-  threads::iothread.mut.unlock()!!;
+  if (framie.pause){
+    ncurses::printw("Paused...");
+  }
+  threads::unlock_mutex(&threads::iothread.mut);
 }
 
 fn Window ncurses_init() @private {
@@ -95,18 +113,24 @@ fn void ncurses_end() @private {
 
 fn void Framializer.play(&self){
   ncurses_init();
+  self.fps = 10;
+  self.frametime = 1000/10;
   threads::iothread_add_callback(' ', &on_pause, self);
+  threads::iothread_add_callback('+', &inc_fps, self);
+  threads::iothread_add_callback('-', &dec_fps, self);
   threads::iothread_add_callback('q', &on_quit, self);
   threads::iothread_add_callback('r', &rerender, self);
   ncurses::curs_set(0);
   while (self.frames.len() != 0){
     if (self.quit) break;
     self.update();
-    thread::sleep_ms(FRAMETIME);
+    thread::sleep_ms(self.frametime);
   }
-  ncurses::printw("Finished visualizing, press q.....");
-  while (!self.quit){ 
-    thread::sleep_ms(FRAMETIME);
+  if (!self.quit){
+    ncurses::printw("Finished visualizing, press q.....");
+    while (!self.quit){ 
+      thread::sleep_ms(self.frametime);
+    }
   }
   ncurses_end();
 }
