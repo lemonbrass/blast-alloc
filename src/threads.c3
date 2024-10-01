@@ -23,11 +23,15 @@ struct IOThread {
 
 IOThread iothread;
 
+fn void lock_mutex(Mutex* mut){
+  while (iothread.mut.try_lock() == false){
+    thread::sleep_ms(POLL_TIME);
+  }
+}
+
 fn int io_thread_func(void* data){
   while (true){
-    while (iothread.mut.try_lock() == false){
-      thread::sleep_ms(POLL_TIME);
-    }
+    lock_mutex(&iothread.mut);
     if (iothread.running == false) break;
     iothread.mut.unlock()!!; // TODO 1: Exception handling
     char ch = (char)ncurses::getch();
@@ -48,9 +52,9 @@ fn void run_iothread(){
   }
   iothread.callbacks.new_init();
   iothread.running = true;
+  iothread.mut.init()!!;
   iothread.th.create(&io_thread_func, null)!!;
   iothread.th.detach()!!;
-  iothread.mut.init()!!;
 }
 
 fn void iothread_add_callback(char event, Callback cback, void* arg){
@@ -73,9 +77,7 @@ fn void iothread_add_callback(char event, Callback cback, void* arg){
 }
 
 fn void stop_iothread(){
-  while (iothread.mut.try_lock() == false){
-    thread::sleep_ms(POLL_TIME);
-  }
+  lock_mutex(&iothread.mut);
   iothread.running = false;
   iothread.mut.unlock()!!; // TODO 1
 }

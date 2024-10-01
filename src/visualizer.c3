@@ -50,9 +50,7 @@ fn void Framializer.update(&self){
   if (catch excuse = frame){
     return; // no frame to play
   }
-  while (threads::iothread.mut.try_lock() == false){
-    thread::sleep_ms(threads::POLL_TIME);
-  }
+  threads::lock_mutex(&threads::iothread.mut);
   ncurses::move(0, 0);
   ncurses::printw(frame.zstr_copy());
   ncurses::refresh();
@@ -73,14 +71,33 @@ fn void on_quit(void* framializer){
   framie.quit = !framie.quit;
 }
 
-fn void Framializer.play(&self){
+fn void rerender(void* framializer){
+  Framializer* framie = (Framializer*) framializer;
+  threads::lock_mutex(&threads::iothread.mut);
+  ncurses::clear();
+  ncurses::refresh();
+  threads::iothread.mut.unlock()!!;
+}
+
+fn Window ncurses_init() @private {
   Window win = ncurses::initscr();
   ncurses::noecho();
   ncurses::nodelay(win, true);
   ncurses::keypad(win, true);
   threads::run_iothread();
+  return win;
+}
+
+fn void ncurses_end() @private {
+  threads::stop_iothread();
+  ncurses::endwin();
+}
+
+fn void Framializer.play(&self){
+  ncurses_init();
   threads::iothread_add_callback(' ', &on_pause, self);
   threads::iothread_add_callback('q', &on_quit, self);
+  threads::iothread_add_callback('r', &rerender, self);
   ncurses::curs_set(0);
   while (self.frames.len() != 0){
     if (self.quit) break;
@@ -88,12 +105,10 @@ fn void Framializer.play(&self){
     thread::sleep_ms(FRAMETIME);
   }
   ncurses::printw("Finished visualizing, press q.....");
-  ncurses::nodelay(win, false);
   while (!self.quit){ 
     thread::sleep_ms(FRAMETIME);
   }
-  threads::stop_iothread();
-  ncurses::endwin();
+  ncurses_end();
 }
 
 fn void Visualizer.update(&self) @private {

@@ -40,7 +40,6 @@ fn void ChunkAlloc.create(&self, usz size){
   comp.second = data;
   comps.push(comp);
   self.viz.create(comps);
-  io::printn("Made new chunk alloc!");
 }
 
 fn Chunk create_chunk(usz size){
@@ -85,5 +84,4 @@ fn void ChunkAlloc.destroy(&alloc){
     mem::free(chunk.mem);
   }
   alloc.chunks.free();
-  // io::printn("Destroyed a chunk alloc!!");
 }
