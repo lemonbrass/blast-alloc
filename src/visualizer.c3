@@ -47,6 +47,7 @@ fn void inc_fps(void* framieraw){
 fn void dec_fps(void* framieraw){
   Framializer* framie = (Framializer*)framieraw;
   framie.fps -= 5;
+  if (framie.fps <= 0) framie.fps = 1;
   framie.frametime = 1000/framie.fps;
 }
 
