@@ -1,29 +1,19 @@
 cmake_minimum_required(VERSION 3.10)
-project(MyProject)
 
-set(CMAKE_C_STANDARD 11)
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -g")
+project(commons)
 
-set(SRCDIR csrc)
-set(LIBDIR lib)
-set(BUILDDIR build)
+set(CSRC_DIR "${CMAKE_SOURCE_DIR}/csrc")
+set(LIB_OUTPUT_DIR "${CMAKE_SOURCE_DIR}/lib")
+set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib")
 
-include_directories(${SRCDIR})
+file(GLOB CSRC_FILES "${CSRC_DIR}/*.c")
 
-file(GLOB_RECURSE SOURCES "${SRCDIR}/*.c")
+file(MAKE_DIRECTORY ${LIB_OUTPUT_DIR})
 
-foreach(SOURCE ${SOURCES})
-    get_filename_component(SOURCE_NAME ${SOURCE} NAME_WE)
-    add_library(${SOURCE_NAME} STATIC ${SOURCE})
+foreach(SOURCE_FILE ${CSRC_FILES})
+    get_filename_component(FILENAME ${SOURCE_FILE} NAME_WE)
+    add_library(${FILENAME} STATIC ${SOURCE_FILE})
+    set_target_properties(${FILENAME} PROPERTIES
+        ARCHIVE_OUTPUT_DIRECTORY "${LIB_OUTPUT_DIR}"
+    )
 endforeach()
-
-set_target_properties(${SOURCE_NAME} PROPERTIES ARCHIVE_OUTPUT_DIRECTORY ${LIBDIR})
-
-add_custom_target(clean-all
-    COMMAND ${CMAKE_COMMAND} -E remove_directory ${BUILDDIR}
-    COMMAND ${CMAKE_COMMAND} -E remove_directory ${LIBDIR}
-)
-
-install(DIRECTORY ${LIBDIR}/
-        DESTINATION lib
-        FILES_MATCHING PATTERN "*.a")
