@@ -1,5 +1,6 @@
 module blast_alloc::visualizer;
 
+import timeu;
 import blast_alloc::chunk;
 import blast_alloc::threads; 
 import ncurses;
@@ -9,6 +10,7 @@ import std::thread;
 import std::core::dstring;
 import libc;
 import std::io;
+import std::time::clock;
 
 
 enum  CompType {
@@ -29,6 +31,7 @@ struct Framializer {
   bool pause;
   int fps;
   ulong frametime;
+  long latency;
   bool quit;
 }
 
@@ -58,6 +61,11 @@ fn Framializer Framializer.create(&self, Frames frames){
   return *self;
 }
 
+fn void Framializer.print_debug (&self) @private {
+  ncurses::printw("FPS: %d\n", self.fps);
+  ncurses::printw("Latency: %d ms\n", self.latency);
+}
+
 fn void Framializer.update(&self){
   if (self.pause){
     return;
@@ -68,6 +76,7 @@ fn void Framializer.update(&self){
   }
   threads::lock_mutex(&threads::iothread.mut);
   ncurses::move(0, 0);
+  self.print_debug();
   ncurses::printw(frame.zstr_copy());
   ncurses::refresh();
   threads::unlock_mutex(&threads::iothread.mut);
@@ -123,9 +132,12 @@ fn void Framializer.play(&self){
   threads::iothread_add_callback('r', &rerender, self);
   ncurses::curs_set(0);
   while (self.frames.len() != 0){
-    if (self.quit) break;
-    self.update();
-    thread::sleep_ms(self.frametime);
+    long ms = timeu::@timeit(){
+      if (self.quit) break;
+      self.update();
+      thread::sleep_ms(self.frametime);
+    };
+    self.latency = ms;
   }
   if (!self.quit){
     ncurses::printw("Finished visualizing, press q.....");

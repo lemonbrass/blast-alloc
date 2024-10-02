@@ -2,10 +2,12 @@
   "langrev": "0.6.2",
   "warnings": [ "no-unused" ],
   "dependency-search-paths": [ "lib" ],
-  "dependencies": [ ],
+  "dependencies": [],
   "authors": [ "lemonbrass" ],
   "version": "0.1.0",
   "sources": [ "src/**" ],
+  "c-sources": [ "csrc/**" ],
+  "linker-search-paths": [ "lib" ],
   "output": "build",
   "targets": {
     "blast_alloc": {
@@ -18,5 +20,5 @@
     }
   },
   "cpu": "generic",
-  "linked-libraries": ["ncurses"],
+  "linked-libraries": ["ncurses", "timelib"],
 }
